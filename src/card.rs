@@ -57,13 +57,6 @@ impl Value {
 }
 
 impl CardSuit {
-    pub fn is_suit(self) -> bool {
-        match self {
-            Spades | Hearts | Diamond | Clubs => true
-            _ => false
-        }
-    }
-
     pub fn to_symbol(self) -> String {
         match self {
             Spades => 's',
