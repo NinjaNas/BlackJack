@@ -1,6 +1,5 @@
 mod gamestate;
-use gamestate::GameState;
-use gamestate::GameAction;
+use gamestate::{GameState, GameAction};
 
 fn main() {
     // Testing
@@ -26,11 +25,7 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gamestate::GameState;
-    use gamestate::GameAction;
-    use gamestate::GameError;
-    use gamestate::ClientEvent;
-    use gamestate::FromPlayer;
+    use gamestate::{GameState, GameAction, GameError, ClientEvent, FromPlayer};
 
     #[test]
     fn negative_add_money() -> Result<(), GameError> {

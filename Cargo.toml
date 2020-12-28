@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 serde = {version = "=1.0.101", package = "serde", features = ["derive"]}
 uuid = {version = "0.8.1", package = "uuid", features=["v4", "serde"]}
+time = {version = "0.2.23", features=["serde"]}

@@ -3,9 +3,9 @@ use std::collections::HashMap;
 use std::option::Option;
 use uuid::Uuid;
 
-type ChipPile = i32;
-type Hand = Vec<i32>;
-type PlayerID = Uuid;
+pub type ChipPile = i32;
+pub type Hand = Vec<i32>;
+pub type PlayerID = Uuid;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct GameState {
