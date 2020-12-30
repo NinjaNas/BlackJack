@@ -23,7 +23,7 @@ pub struct GameServer {
     ws: ws::Server<NoTlsAcceptor>,
     coordinator: Arc<RwLock<GameCoordinator>>,
     error_channel: ErrorChannel,
-    clients: HashMap<PlayerID, Arc<Mutex<ws::Client<TcpStream>>>>,
+    clients: Arc<RwLock<HashMap<PlayerID, Arc<Mutex<ws::Client<TcpStream>>>>>>,
 }
 
 #[derive(Debug)]
@@ -64,7 +64,7 @@ impl GameServer {
             ws: ws::Server::bind(addr)?,
             coordinator: Arc::new(RwLock::new(game_coordinator)),
             error_channel: error_channel.map(|e| Arc::new(Mutex::new(e))),
-            clients: HashMap::new(),
+            clients: Arc::new(RwLock::new(HashMap::new())),
         })
     }
 
@@ -82,10 +82,14 @@ impl GameServer {
                     Ok(client) => {
                         let player_id = self.coordinator.write().unwrap().on_new_user();
                         let client = Arc::new(Mutex::new(client));
-                        self.clients.insert(player_id, client.clone());
+                        self.clients
+                            .write()
+                            .unwrap()
+                            .insert(player_id, client.clone());
 
                         let coordinator = self.coordinator.clone();
                         let error_channel = self.error_channel.clone();
+                        let hash_map_ref = self.clients.clone();
                         thread::spawn(move || {
                             Self::handle_client(
                                 client,
@@ -94,6 +98,7 @@ impl GameServer {
                                 error_channel,
                             );
                             coordinator.write().unwrap().on_dropped_user(player_id);
+                            hash_map_ref.write().unwrap().remove(&player_id);
                         });
                     }
                     Err((_stream, e)) => Self::send_error(&self.error_channel, e),
