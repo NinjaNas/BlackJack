@@ -7,6 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde = {version = "=1.0.101", package = "serde", features = ["derive"]}
+serde = {version = "1.0.101", package = "serde", features = ["derive"]}
 uuid = {version = "0.8.1", package = "uuid", features=["v4", "serde"]}
 time = {version = "0.2.23", features=["serde"]}
+websocket = {version = "0.26.2", default-features = false, features = ["sync"]}
+rmp-serde = "0.15.0"
