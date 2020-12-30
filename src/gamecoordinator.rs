@@ -1,4 +1,6 @@
-use crate::gamestate::{GameState, GameAction, GameError, ClientEvent, FromPlayer, PlayerID, ChipPile};
+use crate::gamestate::{
+    ChipPile, ClientEvent, FromPlayer, GameAction, GameError, GameState, PlayerID,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use time::Time;
@@ -15,7 +17,7 @@ impl GameCoordinator {
     pub fn new() {
         todo!();
     }
-    
+
     pub fn on_new_user() {
         todo!();
     }

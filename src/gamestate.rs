@@ -78,7 +78,7 @@ impl GameState {
 
     pub fn start_game(&mut self) {
         if self.current_player == None {
-            self.current_player = Some(self.player_list[0]); 
+            self.current_player = Some(self.player_list[0]);
         }
     }
 
@@ -97,36 +97,56 @@ impl GameState {
     }
 
     pub fn get_player_hand(&mut self, player: PlayerID) -> Result<&Hand, GameError> {
-        self.player_hand.get(&player).ok_or(GameError::MissingPlayerID)
+        self.player_hand
+            .get(&player)
+            .ok_or(GameError::MissingPlayerID)
     }
 
     pub fn get_mut_player_hand(&mut self, player: PlayerID) -> Result<&mut Hand, GameError> {
-        self.player_hand.get_mut(&player).ok_or(GameError::MissingPlayerID)
+        self.player_hand
+            .get_mut(&player)
+            .ok_or(GameError::MissingPlayerID)
     }
 
     pub fn get_player_money(&mut self, player: PlayerID) -> Result<i32, GameError> {
-        self.player_money.get(&player).ok_or(GameError::MissingPlayerID).map(|money| *money)
+        self.player_money
+            .get(&player)
+            .ok_or(GameError::MissingPlayerID)
+            .map(|money| *money)
     }
 
     pub fn get_mut_player_money(&mut self, player: PlayerID) -> Result<&mut i32, GameError> {
-        self.player_money.get_mut(&player).ok_or(GameError::MissingPlayerID)
+        self.player_money
+            .get_mut(&player)
+            .ok_or(GameError::MissingPlayerID)
     }
 
     pub fn set_player_money(&mut self, player: PlayerID, value: i32) -> Result<(), GameError> {
-        *self.player_money.get_mut(&player).ok_or(GameError::MissingPlayerID)? = value;
+        *self
+            .player_money
+            .get_mut(&player)
+            .ok_or(GameError::MissingPlayerID)? = value;
         Ok(())
     }
 
     pub fn get_player_bet(&mut self, player: PlayerID) -> Result<i32, GameError> {
-        self.player_bet.get(&player).ok_or(GameError::MissingPlayerID).map(|bet| *bet)
+        self.player_bet
+            .get(&player)
+            .ok_or(GameError::MissingPlayerID)
+            .map(|bet| *bet)
     }
 
     pub fn get_mut_player_bet(&mut self, player: PlayerID) -> Result<&mut i32, GameError> {
-        self.player_bet.get_mut(&player).ok_or(GameError::MissingPlayerID)
+        self.player_bet
+            .get_mut(&player)
+            .ok_or(GameError::MissingPlayerID)
     }
 
     pub fn set_player_bet(&mut self, player: PlayerID, value: i32) -> Result<(), GameError> {
-        *self.player_bet.get_mut(&player).ok_or(GameError::MissingPlayerID)? = value;
+        *self
+            .player_bet
+            .get_mut(&player)
+            .ok_or(GameError::MissingPlayerID)? = value;
         Ok(())
     }
 
@@ -138,13 +158,17 @@ impl GameState {
     }
 
     fn ace_conversion(&mut self, player: PlayerID, mut sum: i32) -> Result<i32, GameError> {
-        let ace_count = self.get_player_hand(player)?.iter().filter(|&n| *n == 11).count();
+        let ace_count = self
+            .get_player_hand(player)?
+            .iter()
+            .filter(|&n| *n == 11)
+            .count();
         while sum > 21 && ace_count > 0 {
             sum -= 10;
         }
         Ok(sum)
     }
-    
+
     pub fn sum_hand(&mut self, player: PlayerID) -> Result<i32, GameError> {
         let mut sum = self.get_player_hand(player)?.iter().sum();
         if sum > 21 {
@@ -171,6 +195,7 @@ impl GameState {
     }
 
     pub fn compare_hands(&mut self) -> Result<(), GameError> {
+        // iter_mut, if bet value is 0 continue for loop
         let mut clone_bet = self.player_bet.clone();
         clone_bet.retain(|_, x| *x != 0);
 
@@ -179,8 +204,7 @@ impl GameState {
         for key in clone_bet.keys() {
             if dealer_sum <= 21 && self.sum_hand(*key)? < dealer_sum {
                 *self.get_mut_player_bet(*key)? *= 0;
-            }
-            else {
+            } else {
                 *self.get_mut_player_bet(*key)? *= 2;
             }
         }
@@ -196,7 +220,11 @@ impl GameState {
         Ok(self.player_bet.clear())
     }
 
-    pub fn action(&mut self, event: GameAction, player: PlayerID) -> Result<Vec<ClientEvent>, GameError> {
+    pub fn action(
+        &mut self,
+        event: GameAction,
+        player: PlayerID,
+    ) -> Result<Vec<ClientEvent>, GameError> {
         match event {
             GameAction::Hit if self.current_player == Some(player) => {
                 let new_card = self.deck.remove(0);
@@ -205,8 +233,11 @@ impl GameState {
                     *self.get_mut_player_bet(player)? *= 0;
                     self.action(GameAction::Stand, player).ok();
                 }
-            Ok(vec![ClientEvent::CardRevealed(FromPlayer::Player(player), new_card)])
-            },
+                Ok(vec![ClientEvent::CardRevealed(
+                    FromPlayer::Player(player),
+                    new_card,
+                )])
+            }
             GameAction::Stand if self.current_player == Some(player) => {
                 let next_player = self.next_current_player(player).ok();
                 if next_player == None {
@@ -215,8 +246,11 @@ impl GameState {
                     self.return_bet().ok();
                 }
                 Ok(vec![ClientEvent::RoundOver])
-            },
-            GameAction::Double if self.current_player == Some(player) && self.get_player_hand(player)?.len() == 2 => {
+            }
+            GameAction::Double
+                if self.current_player == Some(player)
+                    && self.get_player_hand(player)?.len() == 2 =>
+            {
                 // First two cards equal to 9, 10, or 11
                 let bet = self.get_player_bet(player)?;
                 if bet <= self.get_player_money(player)? {
@@ -225,11 +259,11 @@ impl GameState {
                     self.action(GameAction::Hit, player).ok();
                 }
                 Ok(vec![ClientEvent::RoundOver])
-            },
+            }
             GameAction::AddMoney(value) if value > 0 => {
                 *self.get_mut_player_money(player)? += value;
                 Ok(vec![ClientEvent::Betting(player, value)])
-            },
+            }
             GameAction::StartingBet(bet) if bet > 0 && bet <= self.get_player_money(player)? => {
                 self.player_bet.insert(player, bet);
                 *self.get_mut_player_money(player)? -= bet;
@@ -237,8 +271,8 @@ impl GameState {
                     self.start_game();
                 }
                 Ok(vec![ClientEvent::Betting(player, bet)])
-            },
-            _ =>Err(GameError::InvaildAction)
-        }                
+            }
+            _ => Err(GameError::InvaildAction),
+        }
     }
 }

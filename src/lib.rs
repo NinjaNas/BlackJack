@@ -1,2 +1,2 @@
-pub mod gamestate;
 pub mod gamecoordinator;
+pub mod gamestate;

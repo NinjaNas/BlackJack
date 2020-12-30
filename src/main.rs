@@ -1,12 +1,12 @@
 mod gamestate;
-use gamestate::{GameState, GameAction};
+use gamestate::{GameAction, GameState};
 
 fn main() {
     // Testing
     let mut game: GameState = GameState::new();
     let player1 = game.add_user();
     let player2 = game.add_user();
-    
+
     game.action(GameAction::AddMoney(100), player1).ok();
     game.action(GameAction::StartingBet(50), player1).ok();
     game.start_game();
@@ -19,13 +19,12 @@ fn main() {
     game.action(GameAction::Stand, player1).ok();
     game.action(GameAction::Stand, player2).ok();
     println!("{:?}", game);
-
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gamestate::{GameState, GameAction, GameError, ClientEvent, FromPlayer};
+    use gamestate::{ClientEvent, FromPlayer, GameAction, GameError, GameState};
 
     #[test]
     fn negative_add_money() -> Result<(), GameError> {
@@ -117,7 +116,13 @@ mod tests {
 
         // Test return value from Hit
         let test_hit = game.action(GameAction::Hit, player1).ok();
-        assert_eq!(test_hit, Some(vec![ClientEvent::CardRevealed(FromPlayer::Player(player1), 11)]));
+        assert_eq!(
+            test_hit,
+            Some(vec![ClientEvent::CardRevealed(
+                FromPlayer::Player(player1),
+                11
+            )])
+        );
         game.action(GameAction::Hit, player1).ok();
         assert_eq!(vec![11, 10], *game.get_player_hand(player1)?);
 
