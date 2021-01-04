@@ -59,10 +59,10 @@ impl Value {
 impl CardSuit {
     pub fn to_symbol(self) -> String {
         match self {
-            Spades => 's',
-            Hearts => 'h',
-            Diamond => 'd',
-            Clubs => 'c'
+            Spades => "♠",
+            Hearts => "❤️",
+            Diamond => "♦",
+            Clubs => "♣"
         }
     }
 }
