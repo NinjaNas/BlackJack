@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::option::Option;
@@ -33,13 +34,13 @@ pub enum GameError {
     InvaildAction,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub enum FromPlayer {
     Dealer,
     Player(PlayerID),
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub enum ClientEvent {
     RoundOver,
     CardRevealed(FromPlayer, i32),
@@ -47,10 +48,10 @@ pub enum ClientEvent {
 }
 
 impl GameState {
-    pub fn new() -> Self {
+    pub fn new(users: &Vec<PlayerID>) -> Self {
         Self {
             current_player: None,
-            player_list: Vec::new(),
+            player_list: users.to_vec(),
             player_hand: HashMap::new(),
             player_money: HashMap::new(),
             player_bet: HashMap::new(),
@@ -59,13 +60,11 @@ impl GameState {
         }
     }
 
-    pub fn add_user(&mut self) -> PlayerID {
-        let id = Uuid::new_v4();
-        self.player_list.push(id);
-        self.player_hand.insert(id, Vec::new());
-        self.player_money.insert(id, 0);
-
-        id
+    pub fn create_users_hand(&mut self) {
+        for id in &self.player_list {
+            self.player_hand.insert(*id, Vec::new());
+            self.player_money.insert(*id, 0);
+        }
     }
 
     pub fn remove_user(&mut self, player: PlayerID) -> PlayerID {
@@ -79,6 +78,9 @@ impl GameState {
     pub fn start_game(&mut self) {
         if self.current_player == None {
             self.current_player = Some(self.player_list[0]);
+            // for player in self.player_list {
+            //     self.action(GameAction::Hit, player).ok();
+            // }
         }
     }
 
@@ -88,15 +90,19 @@ impl GameState {
         Ok(self.current_player = Some(*iter.next().ok_or(GameError::MissingPlayerID)?))
     }
 
-    pub fn get_current_player(&mut self) -> Option<PlayerID> {
+    pub fn get_current_player(&self) -> Option<PlayerID> {
         self.current_player
     }
 
-    pub fn get_dealer_hand(&mut self) -> Hand {
-        self.dealer_hand.clone()
+    pub fn get_player_list(&self) -> &Vec<PlayerID> {
+        &self.player_list
     }
 
-    pub fn get_player_hand(&mut self, player: PlayerID) -> Result<&Hand, GameError> {
+    pub fn get_dealer_hand(& self) -> &Hand {
+        &self.dealer_hand
+    }
+
+    pub fn get_player_hand(&self, player: PlayerID) -> Result<&Hand, GameError> {
         self.player_hand
             .get(&player)
             .ok_or(GameError::MissingPlayerID)
@@ -108,7 +114,7 @@ impl GameState {
             .ok_or(GameError::MissingPlayerID)
     }
 
-    pub fn get_player_money(&mut self, player: PlayerID) -> Result<i32, GameError> {
+    pub fn get_player_money(&self, player: PlayerID) -> Result<i32, GameError> {
         self.player_money
             .get(&player)
             .ok_or(GameError::MissingPlayerID)
@@ -129,7 +135,7 @@ impl GameState {
         Ok(())
     }
 
-    pub fn get_player_bet(&mut self, player: PlayerID) -> Result<i32, GameError> {
+    pub fn get_player_bet(&self, player: PlayerID) -> Result<i32, GameError> {
         self.player_bet
             .get(&player)
             .ok_or(GameError::MissingPlayerID)
