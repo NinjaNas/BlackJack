@@ -5,6 +5,7 @@ use crate::gamestate::{
 };
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::option::Option;
 use time::Time;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -13,7 +14,19 @@ pub struct GameCoordinator {
     current_games: Vec<GameState>,
     last_player_input: HashMap<PlayerID, Time>,
     player_money: HashMap<PlayerID, ChipPile>,
-    events_to_send: Vec<(PlayerID, ClientEvent)>,
+    events_to_send: Vec<(PlayerID, Vec<ClientEvent>)>,
+}
+
+#[derive(Debug)]
+pub enum CoordinatorError {
+    GameError(GameError),
+    PlayerNotFound,
+}
+
+impl From<GameError> for CoordinatorError {
+    fn from(error: GameError) -> Self {
+        CoordinatorError::GameError(error)
+    }
 }
 
 impl GameCoordinator {
@@ -31,15 +44,16 @@ impl GameCoordinator {
         let id = PlayerID::new_v4();
         self.available_players.push(id);
         if self.available_players.len() == 4 {
-            self.current_games.push(GameState::new(&self.available_players));
+            self.current_games
+                .push(GameState::new(self.available_players.clone()));
             self.available_players.clear();
         }
 
         id
     }
 
-    pub fn on_dropped_user(&mut self, player_id: PlayerID) {  
-        if self.available_players.contains(&player_id) { 
+    pub fn on_dropped_user(&mut self, player_id: PlayerID) {
+        if self.available_players.contains(&player_id) {
             self.available_players.retain(|&x| x != player_id);
         } else {
             for game in self.get_mut_current_games() {
@@ -48,21 +62,45 @@ impl GameCoordinator {
         }
     }
 
-    pub fn handle_action(&mut self, player_id: PlayerID, action: GameAction) -> Vec<ClientEvent> {
+    pub fn handle_action(
+        &mut self,
+        player_id: PlayerID,
+        action: GameAction,
+    ) -> Result<Vec<ClientEvent>, CoordinatorError> {
         for game in self.get_mut_current_games() {
             if game.get_player_list().contains(&player_id) {
-                // game.action(action, player_id).ok();
+                let client_event = game.action(action, player_id)?;
+                self.events_to_send.push((player_id, client_event.clone()));
+                return Ok(client_event);
             }
         }
-        todo!();
+        Err(CoordinatorError::PlayerNotFound)
     }
 
-    pub fn get_other_events(&mut self) -> Vec<(PlayerID, ClientEvent)> {
+    pub fn get_other_events(&mut self) -> Vec<(PlayerID, Vec<ClientEvent>)> {
+        let client_event = self.events_to_send.clone();
         self.events_to_send.clear();
-        todo!();
+        client_event
+    }
+
+    pub fn get_available_players(&self) -> &Vec<PlayerID> {
+        &self.available_players
     }
 
     pub fn get_mut_current_games(&mut self) -> &mut Vec<GameState> {
         &mut self.current_games
     }
+
+    pub fn get_last_player_input(&self) -> &HashMap<PlayerID, Time> {
+        &self.last_player_input
+    }
+
+    pub fn get_player_money(&self) -> &HashMap<PlayerID, ChipPile> {
+        &self.player_money
+    }
+
+    pub fn get_events_to_send(&self) -> &Vec<(PlayerID, Vec<ClientEvent>)> {
+        &self.events_to_send
+    }
+
 }
