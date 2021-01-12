@@ -6,7 +6,7 @@ use gamecoordinator::GameCoordinator;
 use gamestate::{GameAction, GameState, PlayerID};
 
 fn main() {
-   todo!();
+    todo!();
 }
 
 #[cfg(test)]
@@ -29,23 +29,46 @@ mod tests {
 
         // Test GameState
         coordinator.get_mut_current_games()[0].create_users_hand();
-        coordinator.get_mut_current_games()[0].get_mut_deck().append(&mut vec![11, 9]);
-        
-        assert_eq!(4, coordinator.get_mut_current_games()[0].get_player_list().len());
-        assert_eq!(vec![11, 9], *coordinator.get_mut_current_games()[0].get_deck());
+        coordinator.get_mut_current_games()[0]
+            .get_mut_deck()
+            .append(&mut vec![11, 9]);
+
+        assert_eq!(
+            4,
+            coordinator.get_mut_current_games()[0]
+                .get_player_list()
+                .len()
+        );
+        assert_eq!(
+            vec![11, 9],
+            *coordinator.get_mut_current_games()[0].get_deck()
+        );
 
         // Player 2 is in waiting room
         let player2 = coordinator.on_new_user();
 
-        assert_eq!(true, coordinator.get_mut_current_games()[0].get_player_list().contains(&player1));
+        assert_eq!(
+            true,
+            coordinator.get_mut_current_games()[0]
+                .get_player_list()
+                .contains(&player1)
+        );
         assert_eq!(true, coordinator.get_available_players().contains(&player2));
 
         // Test on_dropped_user remove players
         coordinator.on_dropped_user(player1);
         coordinator.on_dropped_user(player2);
 
-        assert_eq!(false, coordinator.get_mut_current_games()[0].get_player_list().contains(&player1));
-        assert_eq!(false, coordinator.get_available_players().contains(&player2));
+        assert_eq!(
+            false,
+            coordinator.get_mut_current_games()[0]
+                .get_player_list()
+                .contains(&player1)
+        );
+        assert_eq!(
+            false,
+            coordinator.get_available_players().contains(&player2)
+        );
 
         Ok(())
     }
@@ -94,7 +117,8 @@ mod tests {
         let player2 = PlayerID::new_v4();
         let mut game: GameState = GameState::new(vec![player1, player2]);
         game.create_users_hand();
-        game.get_mut_deck().append(&mut vec![11, 10, 2, 10, 10, 8, 10]);
+        game.get_mut_deck()
+            .append(&mut vec![11, 10, 2, 10, 10, 8, 10]);
         game.action(GameAction::AddMoney(100.0), player1).ok();
         game.action(GameAction::StartingBet(100.0), player1).ok();
         assert_eq!(None, game.get_current_player());
@@ -128,7 +152,8 @@ mod tests {
         let player1 = PlayerID::new_v4();
         let mut game: GameState = GameState::new(vec![player1]);
         game.create_users_hand();
-        game.get_mut_deck().append(&mut vec![11, 10, 2, 10, 10, 8, 10, 7]);
+        game.get_mut_deck()
+            .append(&mut vec![11, 10, 2, 10, 10, 8, 10, 7]);
         game.action(GameAction::AddMoney(100.0), player1).ok();
         game.action(GameAction::StartingBet(100.0), player1).ok();
 
@@ -144,7 +169,8 @@ mod tests {
         let player2 = PlayerID::new_v4();
         let mut game: GameState = GameState::new(vec![player1, player2]);
         game.create_users_hand();
-        game.get_mut_deck().append(&mut vec![11, 10, 2, 10, 10, 8, 10, 7]);
+        game.get_mut_deck()
+            .append(&mut vec![11, 10, 2, 10, 10, 8, 10, 7]);
         game.action(GameAction::AddMoney(100.0), player1).ok();
         game.action(GameAction::StartingBet(100.0), player1).ok();
         game.action(GameAction::AddMoney(100.0), player2).ok();
@@ -157,14 +183,15 @@ mod tests {
     #[test]
     fn double() -> Result<(), GameError> {
         // Test double action
-        
+
         let player1 = PlayerID::new_v4();
         let player2 = PlayerID::new_v4();
         let player3 = PlayerID::new_v4();
         let player4 = PlayerID::new_v4();
         let mut game: GameState = GameState::new(vec![player1, player2, player3, player4]);
         game.create_users_hand();
-        game.get_mut_deck().append(&mut vec![11, 9, 2, 8, 10, 8, 2, 7, 2, 3, 5, 5, 5, 5]);
+        game.get_mut_deck()
+            .append(&mut vec![11, 9, 2, 8, 10, 8, 2, 7, 2, 3, 5, 5, 5, 5]);
 
         game.action(GameAction::AddMoney(100.0), player1).ok();
         game.action(GameAction::StartingBet(50.0), player1).ok();
@@ -196,7 +223,7 @@ mod tests {
         // Hand sums to 9
         assert_eq!(vec![2, 7], *game.get_player_hand(player3)?);
 
-        // Doubling is allowed, hitting and standing is automatically done 
+        // Doubling is allowed, hitting and standing is automatically done
         let test_double_3 = game.action(GameAction::Double, player3).ok();
         assert_eq!(test_double_3, Some(vec![ClientEvent::RoundOver]));
         assert_eq!(0.0, game.get_player_money(player3)?);
@@ -221,7 +248,8 @@ mod tests {
         let player2 = PlayerID::new_v4();
         let mut game: GameState = GameState::new(vec![player1, player2]);
         game.create_users_hand();
-        game.get_mut_deck().append(&mut vec![11, 10, 2, 10, 10, 8, 10, 7]);
+        game.get_mut_deck()
+            .append(&mut vec![11, 10, 2, 10, 10, 8, 10, 7]);
 
         // Test return value from AddMoney
         let test_money = game.action(GameAction::AddMoney(100.0), player1).ok();
@@ -241,7 +269,7 @@ mod tests {
 
         // Test player1 hand (Natural BlackJack returns x2.5)
         assert_eq!(vec![11, 10], *game.get_player_hand(player1)?);
-        // Bets are mutated at the end of the round 
+        // Bets are mutated at the end of the round
         assert_eq!(100.0, game.get_player_bet(player1)?);
 
         // Player hits and busts, ending game since no one is next in player_list

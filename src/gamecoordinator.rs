@@ -102,5 +102,4 @@ impl GameCoordinator {
     pub fn get_events_to_send(&self) -> &Vec<(PlayerID, Vec<ClientEvent>)> {
         &self.events_to_send
     }
-
 }

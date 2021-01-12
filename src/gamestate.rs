@@ -269,8 +269,13 @@ impl GameState {
                 // Make sure the next_current_player hand has playable actions, else cycle through player_list, if reaches end of list then end game
                 // Error checking for natural blackjacks
                 self.player_round_over.push(player);
-                while self.player_round_over.contains(&self.get_result_current_player()?){
-                    let next_player = self.next_current_player(self.get_result_current_player()?).ok();
+                while self
+                    .player_round_over
+                    .contains(&self.get_result_current_player()?)
+                {
+                    let next_player = self
+                        .next_current_player(self.get_result_current_player()?)
+                        .ok();
                     if next_player == None {
                         ClientEvent::CardRevealed(FromPlayer::Dealer, self.dealer_hand[1]);
                         self.dealer_draw_final();
@@ -303,15 +308,22 @@ impl GameState {
                 *self.get_mut_player_money(player)? += value;
                 Ok(vec![ClientEvent::Betting(player, value)])
             }
-            GameAction::StartingBet(bet) if bet > 0.0 && bet <= self.get_player_money(player)? => {
+            GameAction::StartingBet(bet)
+                if bet > 0.0 && bet <= self.get_player_money(player)? =>
+            {
                 self.player_bet.insert(player, bet);
                 *self.get_mut_player_money(player)? -= bet;
                 if self.player_list.len() == self.player_bet.len() {
                     self.start_game();
                     self.check_natural_blackjack().ok();
                     // Make sure the next_current_player hand has playable actions, else cycle through player_list, if reaches end of list then end game
-                    while self.player_round_over.contains(&self.get_result_current_player()?){
-                        let next_player = self.next_current_player(self.get_result_current_player()?).ok();
+                    while self
+                        .player_round_over
+                        .contains(&self.get_result_current_player()?)
+                    {
+                        let next_player = self
+                            .next_current_player(self.get_result_current_player()?)
+                            .ok();
                         if next_player == None {
                             ClientEvent::CardRevealed(FromPlayer::Dealer, self.dealer_hand[1]);
                             self.dealer_draw_final();
