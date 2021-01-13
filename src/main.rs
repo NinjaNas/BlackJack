@@ -211,7 +211,7 @@ mod tests {
 
         // Test return value from Stand
         let test_stand = game.action(GameAction::Stand, player1).ok();
-        assert_eq!(test_stand, Some(vec![ClientEvent::RoundOver]));
+        assert_eq!(test_stand, Some(vec![ClientEvent::PlayerRoundOver]));
 
         // Cannot double without sufficient money
         assert_eq!(vec![9, 2], *game.get_player_hand(player2)?);
@@ -225,7 +225,13 @@ mod tests {
 
         // Doubling is allowed, hitting and standing is automatically done
         let test_double_3 = game.action(GameAction::Double, player3).ok();
-        assert_eq!(test_double_3, Some(vec![ClientEvent::RoundOver]));
+        assert_eq!(
+            test_double_3,
+            Some(vec![
+                ClientEvent::CardRevealed(FromPlayer::Player(player3), 5),
+                ClientEvent::PlayerRoundOver
+            ])
+        );
         assert_eq!(0.0, game.get_player_money(player3)?);
         assert_eq!(100.0, game.get_player_bet(player3)?);
         assert_eq!(vec![2, 7, 5], *game.get_player_hand(player3)?);
@@ -276,10 +282,13 @@ mod tests {
         let test_hit = game.action(GameAction::Hit, player2).ok();
         assert_eq!(
             test_hit,
-            Some(vec![ClientEvent::CardRevealed(
-                FromPlayer::Player(player2),
-                10
-            )])
+            Some(vec![
+                ClientEvent::CardRevealed(FromPlayer::Player(player2), 10),
+                ClientEvent::PlayerRoundOver,
+                ClientEvent::CardRevealed(FromPlayer::Dealer, 8),
+                ClientEvent::CardRevealed(FromPlayer::Dealer, 7),
+                ClientEvent::RoundOver
+            ])
         );
         assert_eq!(vec![10, 10, 10], *game.get_player_hand(player2)?);
 

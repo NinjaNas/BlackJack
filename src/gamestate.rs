@@ -43,6 +43,7 @@ pub enum FromPlayer {
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub enum ClientEvent {
+    PlayerRoundOver,
     RoundOver,
     CardRevealed(FromPlayer, i32),
     Betting(PlayerID, ChipPile),
@@ -79,30 +80,37 @@ impl GameState {
         player
     }
 
-    pub fn start_game(&mut self) {
+    pub fn start_game(&mut self) -> Result<Vec<ClientEvent>, GameError> {
+        let mut events: Vec<ClientEvent> = Vec::new();
         if self.current_player == None {
             // Deals cards in a staggered way
             while self.dealer_hand.len() < 2 {
                 for player in self.player_list.clone() {
                     self.current_player = Some(player);
-                    self.action(GameAction::Hit, player).ok();
+                    events.extend(self.action(GameAction::Hit, player)?);
                 }
                 self.dealer_draw();
                 if self.dealer_hand.len() == 1 {
-                    ClientEvent::CardRevealed(FromPlayer::Dealer, self.dealer_hand[0]);
+                    events.push(ClientEvent::CardRevealed(
+                        FromPlayer::Dealer,
+                        self.dealer_hand[0],
+                    ));
                 }
             }
             self.current_player = Some(self.player_list[0]);
         }
+        Ok(events)
     }
 
-    pub fn check_natural_blackjack(&mut self) -> Result<(), GameError> {
+    pub fn check_natural_blackjack(&mut self) -> Result<Vec<ClientEvent>, GameError> {
+        let mut events: Vec<ClientEvent> = Vec::new();
         for player in self.player_list.clone() {
             if self.sum_hand(player)? == 21 {
                 self.player_round_over.push(player);
+                events.push(ClientEvent::PlayerRoundOver);
             }
         }
-        Ok(())
+        Ok(events)
     }
 
     pub fn next_current_player(&mut self, player: PlayerID) -> Result<PlayerID, GameError> {
@@ -148,27 +156,27 @@ impl GameState {
             .ok_or(GameError::MissingPlayerID)
     }
 
-    pub fn get_player_money(&self, player: PlayerID) -> Result<f32, GameError> {
+    pub fn get_player_money(&self, player: PlayerID) -> Result<ChipPile, GameError> {
         self.player_money
             .get(&player)
             .ok_or(GameError::MissingPlayerID)
             .map(|money| *money)
     }
 
-    pub fn get_mut_player_money(&mut self, player: PlayerID) -> Result<&mut f32, GameError> {
+    pub fn get_mut_player_money(&mut self, player: PlayerID) -> Result<&mut ChipPile, GameError> {
         self.player_money
             .get_mut(&player)
             .ok_or(GameError::MissingPlayerID)
     }
 
-    pub fn get_player_bet(&self, player: PlayerID) -> Result<f32, GameError> {
+    pub fn get_player_bet(&self, player: PlayerID) -> Result<ChipPile, GameError> {
         self.player_bet
             .get(&player)
             .ok_or(GameError::MissingPlayerID)
             .map(|bet| *bet)
     }
 
-    pub fn get_mut_player_bet(&mut self, player: PlayerID) -> Result<&mut f32, GameError> {
+    pub fn get_mut_player_bet(&mut self, player: PlayerID) -> Result<&mut ChipPile, GameError> {
         self.player_bet
             .get_mut(&player)
             .ok_or(GameError::MissingPlayerID)
@@ -215,12 +223,18 @@ impl GameState {
         self.dealer_hand.push(new_card);
     }
 
-    pub fn dealer_draw_final(&mut self) {
+    pub fn dealer_draw_final(&mut self) -> Result<Vec<ClientEvent>, GameError> {
+        let mut events: Vec<ClientEvent> = Vec::new();
+        events.push(ClientEvent::CardRevealed(
+            FromPlayer::Dealer,
+            self.dealer_hand[1],
+        ));
         while self.sum_dealer() < 17 {
             let new_card = self.deck.remove(0);
             self.dealer_hand.push(new_card);
-            ClientEvent::CardRevealed(FromPlayer::Dealer, new_card);
+            events.push(ClientEvent::CardRevealed(FromPlayer::Dealer, new_card));
         }
+        Ok(events)
     }
 
     pub fn compare_hands(&mut self) -> Result<(), GameError> {
@@ -255,20 +269,24 @@ impl GameState {
     ) -> Result<Vec<ClientEvent>, GameError> {
         match event {
             GameAction::Hit if self.current_player == Some(player) => {
+                let mut events: Vec<ClientEvent> = Vec::new();
                 let new_card = self.deck.remove(0);
                 self.get_mut_player_hand(player)?.push(new_card);
-                if self.sum_hand(player)? > 21 {
-                    self.action(GameAction::Stand, player).ok();
-                }
-                Ok(vec![ClientEvent::CardRevealed(
+                events.push(ClientEvent::CardRevealed(
                     FromPlayer::Player(player),
                     new_card,
-                )])
+                ));
+                if self.sum_hand(player)? > 21 {
+                    events.extend(self.action(GameAction::Stand, player)?);
+                }
+                Ok(events)
             }
             GameAction::Stand if self.current_player == Some(player) => {
                 // Make sure the next_current_player hand has playable actions, else cycle through player_list, if reaches end of list then end game
                 // Error checking for natural blackjacks
+                let mut events: Vec<ClientEvent> = Vec::new();
                 self.player_round_over.push(player);
+                events.push(ClientEvent::PlayerRoundOver);
                 while self
                     .player_round_over
                     .contains(&self.get_result_current_player()?)
@@ -277,32 +295,32 @@ impl GameState {
                         .next_current_player(self.get_result_current_player()?)
                         .ok();
                     if next_player == None {
-                        ClientEvent::CardRevealed(FromPlayer::Dealer, self.dealer_hand[1]);
-                        self.dealer_draw_final();
+                        events.extend(self.dealer_draw_final()?);
                         self.compare_hands().ok();
                         self.return_bet().ok();
+                        events.push(ClientEvent::RoundOver);
                         break;
                     }
                 }
-
-                Ok(vec![ClientEvent::RoundOver])
+                Ok(events)
             }
             GameAction::Double
                 if self.current_player == Some(player)
                     && self.get_player_hand(player)?.len() == 2 =>
             {
                 // First two cards equal to 9, 10, or 11
+                let mut events: Vec<ClientEvent> = Vec::new();
                 let sum = self.sum_hand(player)?;
                 if sum == 9 || sum == 10 || sum == 11 {
                     let bet = self.get_player_bet(player)?;
                     if bet <= self.get_player_money(player)? {
                         *self.get_mut_player_money(player)? -= bet;
                         *self.get_mut_player_bet(player)? *= 2.0;
-                        self.action(GameAction::Hit, player).ok();
-                        self.action(GameAction::Stand, player).ok();
+                        events.extend(self.action(GameAction::Hit, player)?);
+                        events.extend(self.action(GameAction::Stand, player)?);
                     }
                 }
-                Ok(vec![ClientEvent::RoundOver])
+                Ok(events)
             }
             GameAction::AddMoney(value) if value > 0.0 => {
                 *self.get_mut_player_money(player)? += value;
@@ -311,10 +329,12 @@ impl GameState {
             GameAction::StartingBet(bet)
                 if bet > 0.0 && bet <= self.get_player_money(player)? =>
             {
+                let mut events: Vec<ClientEvent> = Vec::new();
                 self.player_bet.insert(player, bet);
                 *self.get_mut_player_money(player)? -= bet;
+                events.push(ClientEvent::Betting(player, bet));
                 if self.player_list.len() == self.player_bet.len() {
-                    self.start_game();
+                    events.extend(self.start_game()?);
                     self.check_natural_blackjack().ok();
                     // Make sure the next_current_player hand has playable actions, else cycle through player_list, if reaches end of list then end game
                     while self
@@ -325,15 +345,15 @@ impl GameState {
                             .next_current_player(self.get_result_current_player()?)
                             .ok();
                         if next_player == None {
-                            ClientEvent::CardRevealed(FromPlayer::Dealer, self.dealer_hand[1]);
-                            self.dealer_draw_final();
+                            events.extend(self.dealer_draw_final()?);
                             self.compare_hands().ok();
                             self.return_bet().ok();
+                            events.push(ClientEvent::RoundOver);
                             break;
                         }
                     }
                 }
-                Ok(vec![ClientEvent::Betting(player, bet)])
+                Ok(events)
             }
             _ => Err(GameError::InvaildAction),
         }
