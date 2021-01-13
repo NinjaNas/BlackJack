@@ -14,7 +14,7 @@ pub struct GameCoordinator {
     current_games: Vec<GameState>,
     last_player_input: HashMap<PlayerID, Time>,
     player_money: HashMap<PlayerID, ChipPile>,
-    events_to_send: Vec<(PlayerID, Vec<ClientEvent>)>,
+    events_to_send: HashMap<PlayerID, Vec<ClientEvent>>,
 }
 
 #[derive(Debug)]
@@ -36,7 +36,7 @@ impl GameCoordinator {
             current_games: Vec::new(),
             last_player_input: HashMap::new(),
             player_money: HashMap::new(),
-            events_to_send: Vec::new(),
+            events_to_send: HashMap::new(),
         }
     }
 
@@ -67,17 +67,28 @@ impl GameCoordinator {
         player_id: PlayerID,
         action: GameAction,
     ) -> Result<Vec<ClientEvent>, CoordinatorError> {
-        for game in self.get_mut_current_games() {
-            if game.get_player_list().contains(&player_id) {
-                let client_event = game.action(action, player_id)?;
-                self.events_to_send.push((player_id, client_event.clone()));
-                return Ok(client_event);
-            }
-        }
-        Err(CoordinatorError::PlayerNotFound)
+        let player_game = self
+            .get_mut_current_games()
+            .iter_mut()
+            .filter(|game| game.get_player_list().contains(&&player_id))
+            .next()
+            .ok_or(CoordinatorError::PlayerNotFound)?;
+        let client_event = player_game.action(action, player_id)?;
+        let players = player_game.get_player_list().clone();
+        drop(player_game);
+        players
+            .iter()
+            .filter(|id| id != &&player_id)
+            .for_each(|id| {
+                self.events_to_send
+                    .entry(*id)
+                    .and_modify(|events| events.extend(client_event.clone()))
+                    .or_insert(client_event.clone());
+            });
+        Ok(client_event)
     }
 
-    pub fn get_other_events(&mut self) -> Vec<(PlayerID, Vec<ClientEvent>)> {
+    pub fn get_other_events(&mut self) -> HashMap<PlayerID, Vec<ClientEvent>> {
         let client_event = self.events_to_send.clone();
         self.events_to_send.clear();
         client_event
@@ -85,6 +96,10 @@ impl GameCoordinator {
 
     pub fn get_available_players(&self) -> &Vec<PlayerID> {
         &self.available_players
+    }
+
+    pub fn get_current_games(&self) -> &Vec<GameState> {
+        &self.current_games
     }
 
     pub fn get_mut_current_games(&mut self) -> &mut Vec<GameState> {
@@ -99,7 +114,7 @@ impl GameCoordinator {
         &self.player_money
     }
 
-    pub fn get_events_to_send(&self) -> &Vec<(PlayerID, Vec<ClientEvent>)> {
+    pub fn get_events_to_send(&self) -> &HashMap<PlayerID, Vec<ClientEvent>> {
         &self.events_to_send
     }
 }
