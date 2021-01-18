@@ -1,9 +1,22 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Card {
     card_suit: CardSuit,
-    value: Value
+    value: Value,
+}
+
+impl fmt::Debug for Card {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&*format!("{}{:?}", self.card_suit.to_symbol(), self.value))
+    }
+}
+
+#[test]
+fn debug_output_for_card() {
+    let card = Card::new(CardSuit::Spades, Value::Two);
+    assert_eq!(format!("{:?}", card), "♠Two".to_string());
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -11,7 +24,7 @@ pub enum CardSuit {
     Spades,
     Hearts,
     Diamond,
-    Clubs
+    Clubs,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -28,58 +41,64 @@ pub enum Value {
     Jack,
     Queen,
     King,
-    Ace
+    Ace,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Deck {
-    cards: Vec<Card>
+    cards: Vec<Card>,
 }
 
 impl Value {
-    pub fn value(self) -> i8 {
-        match self {
-            Two => 2,
-            Three => 3,
-            Four => 4,
-            Five => 5,
-            Six => 6,
-            Seven => 7,
-            Eight => 8,
-            Nine => 9,
-            Ten => 10,
-            Jack => 10,
-            Queen => 10,
-            King => 10,
-            Ace => 11
+    pub fn value(&self) -> i8 {
+        match &self {
+            Value::Two => 2,
+            Value::Three => 3,
+            Value::Four => 4,
+            Value::Five => 5,
+            Value::Six => 6,
+            Value::Seven => 7,
+            Value::Eight => 8,
+            Value::Nine => 9,
+            Value::Ten => 10,
+            Value::Jack => 10,
+            Value::Queen => 10,
+            Value::King => 10,
+            Value::Ace => 11,
         }
     }
 }
 
 impl CardSuit {
-    pub fn to_symbol(self) -> String {
+    pub fn to_symbol(&self) -> String {
         match self {
-            Spades => "♠",
-            Hearts => "❤️",
-            Diamond => "♦",
-            Clubs => "♣"
+            CardSuit::Spades => "♠".to_string(),
+            CardSuit::Hearts => "❤️".to_string(),
+            CardSuit::Diamond => "♦".to_string(),
+            CardSuit::Clubs => "♣".to_string(),
         }
     }
 }
 
 impl Card {
-    pub fn is_face(self) -> bool {
-        match self {
-            Jack, Queen, King, Ace => true
-            _ => false
+    pub fn is_face(&self) -> bool {
+        match self.value {
+            Value::Jack | Value::Queen | Value::King | Value::Ace => true,
+            _ => false,
         }
     }
 
-    pub fn is_ace(self) -> bool {
-        match self {
-            Ace => true
-            _ => false
+    pub fn is_ace(&self) -> bool {
+        match self.value {
+            Value::Ace => true,
+            _ => false,
         }
     }
 
+    pub fn new(suit: CardSuit, value: Value) -> Self {
+        Self {
+            card_suit: suit,
+            value,
+        }
+    }
 }
