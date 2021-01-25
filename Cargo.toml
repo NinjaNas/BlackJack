@@ -5,6 +5,9 @@ authors = ["Khang Tran <ktra@email.unc.edu>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "lib"
+path = "src/lib/lib.rs"
 
 [dependencies]
 serde = {version = "=1.0.101", package = "serde", features = ["derive"]}

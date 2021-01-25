@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Card {
     card_suit: CardSuit,
     value: Value,
@@ -19,15 +19,15 @@ fn debug_output_for_card() {
     assert_eq!(format!("{:?}", card), "♠Two".to_string());
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub enum CardSuit {
     Spades,
     Hearts,
-    Diamond,
+    Diamonds,
     Clubs,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Debug, Serialize, Deserialize)]
 pub enum Value {
     Two,
     Three,
@@ -74,7 +74,7 @@ impl CardSuit {
         match self {
             CardSuit::Spades => "♠".to_string(),
             CardSuit::Hearts => "❤️".to_string(),
-            CardSuit::Diamond => "♦".to_string(),
+            CardSuit::Diamonds => "♦".to_string(),
             CardSuit::Clubs => "♣".to_string(),
         }
     }
@@ -100,5 +100,9 @@ impl Card {
             card_suit: suit,
             value,
         }
+    }
+
+    pub fn get_value(self) -> i8 {
+        self.value.value()
     }
 }
