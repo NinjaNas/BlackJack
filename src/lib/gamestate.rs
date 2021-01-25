@@ -1,11 +1,12 @@
 #![allow(dead_code)]
+use crate::card::Card;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::option::Option;
 use uuid::Uuid;
 
 pub type ChipPile = f32;
-pub type Hand = Vec<i32>;
+pub type Hand = Vec<Card>;
 pub type PlayerID = Uuid;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -17,7 +18,7 @@ pub struct GameState {
     player_bet: HashMap<PlayerID, ChipPile>,
     player_round_over: Vec<PlayerID>,
     dealer_hand: Hand,
-    deck: Vec<i32>,
+    deck: Vec<Card>,
 }
 
 #[derive(Debug, Deserialize, Serialize, Copy, Clone)]
@@ -45,7 +46,7 @@ pub enum FromPlayer {
 pub enum ClientEvent {
     PlayerRoundOver,
     RoundOver,
-    CardRevealed(FromPlayer, i32),
+    CardRevealed(FromPlayer, Card),
     Betting(PlayerID, ChipPile),
 }
 
@@ -128,11 +129,11 @@ impl GameState {
         self.current_player.ok_or(GameError::MissingPlayerID)
     }
 
-    pub fn get_deck(&self) -> &Vec<i32> {
+    pub fn get_deck(&self) -> &Vec<Card> {
         &self.deck
     }
 
-    pub fn get_mut_deck(&mut self) -> &mut Vec<i32> {
+    pub fn get_mut_deck(&mut self) -> &mut Vec<Card> {
         &mut self.deck
     }
 
@@ -193,11 +194,11 @@ impl GameState {
         })
     }
 
-    fn ace_conversion(&mut self, player: PlayerID, mut sum: i32) -> Result<i32, GameError> {
+    fn ace_conversion(&mut self, player: PlayerID, mut sum: i8) -> Result<i8, GameError> {
         let ace_count = self
             .get_player_hand(player)?
             .iter()
-            .filter(|&n| *n == 11)
+            .filter(|&n| n.get_value() == 11)
             .count();
         while sum > 21 && ace_count > 0 {
             sum -= 10;
@@ -205,8 +206,13 @@ impl GameState {
         Ok(sum)
     }
 
-    pub fn sum_hand(&mut self, player: PlayerID) -> Result<i32, GameError> {
-        let mut sum = self.get_player_hand(player)?.iter().sum();
+    pub fn sum_hand(&mut self, player: PlayerID) -> Result<i8, GameError> {
+        let mut sum: i8 = self
+            .get_player_hand(player)?
+            .iter()
+            .map(|c| c.get_value())
+            .sum();
+
         if sum > 21 {
             sum = self.ace_conversion(player, sum)?;
         }
@@ -214,8 +220,10 @@ impl GameState {
         Ok(sum)
     }
 
-    pub fn sum_dealer(&mut self) -> i32 {
-        self.dealer_hand.iter().sum()
+    pub fn sum_dealer(&mut self) -> i8 {
+        let sum: i8 = self.dealer_hand.iter().map(|c| c.get_value()).sum();
+
+        sum
     }
 
     pub fn dealer_draw(&mut self) {
@@ -244,7 +252,7 @@ impl GameState {
             let player_sum = self.sum_hand(*key)?;
             if dealer_sum <= 21 && player_sum < dealer_sum || player_sum > 21 {
                 *self.get_mut_player_bet(*key)? *= 0.0;
-            } else if self.sum_hand(*key)? == 21 {
+            } else if self.sum_hand(*key)? == 21 && self.get_player_hand(*key)?.len() == 2 {
                 *self.get_mut_player_bet(*key)? *= 2.5;
             } else {
                 *self.get_mut_player_bet(*key)? *= 2.0;
